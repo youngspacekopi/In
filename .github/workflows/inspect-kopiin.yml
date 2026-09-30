@@ -16,9 +16,13 @@ jobs:
           rm -rf work
           mkdir work
           unzip -q "kopiin (6).zip" -d work
-          echo "=== TREE ==="
-          find work -maxdepth 4 -type f | sort | head -300
-          echo "=== AUTH REFERENCES ==="
-          grep -RInE "supabase\.auth|from\(['\"]|login|register|master|password|users|profiles|localStorage|session" work --exclude-dir=node_modules --exclude='*.map' | head -1000 || true
-          echo "=== PACKAGE FILES ==="
-          find work -name package.json -o -name vite.config.* -o -name '*.sql' | sort
+          echo "=== AUTH FILE ==="
+          sed -n '1,380p' work/src/lib/auth/kopiinAuth.ts
+          echo "=== PLATFORM CONTEXT AUTH ==="
+          sed -n '120,330p' work/src/context/PlatformContext.tsx
+          echo "=== SCHEMA USERS ==="
+          sed -n '1,90p' work/src/lib/supabase/schema.sql
+          echo "=== SUPABASE CLIENT ==="
+          cat work/src/lib/supabase/client.ts
+          echo "=== SUPABASE ENV ==="
+          cat work/.env.example
