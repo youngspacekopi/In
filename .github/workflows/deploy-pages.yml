@@ -81,6 +81,13 @@ jobs:
             echo "=== package.json ==="
             cat package.json
 
+            node - <<'NODE'
+            const fs=require('fs');
+            const p='package.json';
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            j.overrides={...(j.overrides||{}),'electron-to-chromium':'1.5.439'};
+            fs.writeFileSync(p,JSON.stringify(j,null,2)+'\\n');
+            NODE
             rm -f package-lock.json npm-shrinkwrap.json
             npm install --legacy-peer-deps
 
