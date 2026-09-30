@@ -1,0 +1,30 @@
+name: Publish KOPIIN Verified Web
+on:
+  workflow_run:
+    workflows: ["KOPIIN Final Build Verified"]
+    types: [completed]
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Download verified web
+        uses: actions/download-artifact@v4
+        with:
+          name: kopiin-web-verified
+          path: site
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Upload Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Deploy Pages
+        uses: actions/deploy-pages@v4
