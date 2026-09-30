@@ -51,21 +51,21 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project directory: $PROJECT_DIR"
 
-      - name: Audit quick-account master references
+      - name: Hide demo autofill option
         working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "=== MASTER/QUICK ACCOUNT REFERENCES ==="
-          grep -RniE --exclude-dir=node_modules --exclude-dir=android --exclude-dir=dist 'akun cepat|quick account|quick.?login|platform.?master|INITIAL_USERS|MASTER' . | head -300 || true
-
-      - name: Inspect quick-account UI context
-        working-directory: ${{ env.PROJECT_DIR }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== LoginPage quick-account context ==="
-          sed -n '300,355p' src/components/presentation/LoginPage.tsx
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/presentation/LoginPage.tsx')
+          s = p.read_text()
+          needle = 'bg-purple-100 hover:bg-purple-200 text-purple-950 border border-purple-300 rounded-lg text-[10px] font-bold cursor-pointer'
+          if s.count(needle) != 1:
+              raise SystemExit('Expected exactly one purple demo autofill button.')
+          p.write_text(s.replace(needle, 'hidden ' + needle, 1))
+          print('Demo autofill option hidden.')
+          PY
 
       - name: Apply master authentication fix
         working-directory: ${{ env.PROJECT_DIR }}
