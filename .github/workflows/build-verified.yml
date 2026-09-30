@@ -44,6 +44,20 @@ jobs:
           if s.count(n)!=1: raise SystemExit('Master demo button pattern missing')
           p.write_text(s.replace(n,'hidden '+n,1))
           PY
+      - name: Harden actual login email normalization
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/context/PlatformContext.tsx')
+          s=p.read_text()
+          old="const trimmedEmail = email.trim().toLowerCase();"
+          new="const trimmedEmail = email.normalize('NFKC').replace(/[\\u200B-\\u200D\\uFEFF]/g, '').replace(/\\s/g, '').toLowerCase();"
+          if s.count(old)!=1:
+            raise SystemExit(f'Login normalization target not found uniquely: {s.count(old)}')
+          p.write_text(s.replace(old,new,1))
+          print('LOGIN_NORMALIZATION_V2=patched')
+          PY
       - name: Install dependencies
         working-directory: ${{ env.DIR }}
         run: |
