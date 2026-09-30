@@ -81,6 +81,7 @@ jobs:
             echo "=== package.json ==="
             cat package.json
 
+            rm -f package-lock.json npm-shrinkwrap.json
             npm install --legacy-peer-deps
 
             npm run build -- --base=/In/
