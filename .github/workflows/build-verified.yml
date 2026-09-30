@@ -47,6 +47,21 @@ jobs:
       - name: Build web for GitHub Pages
         working-directory: ${{ env.DIR }}
         run: npm run build -- --base=/In/
+      - name: Disable stale PWA service worker
+        working-directory: ${{ env.DIR }}
+        run: |
+          set -e
+          rm -f dist/sw.js dist/registerSW.js dist/workbox-*.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dist/index.html')
+          s=p.read_text()
+          s=s.replace('<script type="module" src="/registerSW.js"></script>', '')
+          s=s.replace('<script src="/registerSW.js"></script>', '')
+          p.write_text(s)
+          PY
+          test ! -e dist/sw.js
+          test ! -e dist/registerSW.js
       - name: Normalize GitHub Pages paths
         working-directory: ${{ env.DIR }}
         run: |
