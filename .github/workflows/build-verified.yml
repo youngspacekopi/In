@@ -44,9 +44,34 @@ jobs:
           node -e "const fs=require('fs'),p='package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.overrides=Object.assign({},j.overrides,{'electron-to-chromium':'1.5.439'});fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
           rm -f package-lock.json npm-shrinkwrap.json
           npm install --legacy-peer-deps --no-audit --no-fund
-      - name: Build web
+      - name: Build web for GitHub Pages
         working-directory: ${{ env.DIR }}
-        run: npm run build
+        run: npm run build -- --base=/In/
+      - name: Normalize GitHub Pages paths
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dist/index.html')
+          s=p.read_text()
+          replacements={
+            'src="/assets/':'src="/In/assets/',
+            'href="/assets/':'href="/In/assets/',
+            'href="/icon.svg"':'href="/In/icon.svg"',
+            'href="/manifest.webmanifest"':'href="/In/manifest.webmanifest"',
+            'src="/registerSW.js"':'src="/In/registerSW.js"',
+          }
+          for a,b in replacements.items():
+            s=s.replace(a,b)
+          p.write_text(s)
+          Path('dist/404.html').write_text(s)
+          if 'src="/assets/' in s or 'href="/assets/' in s:
+            raise SystemExit('Unfixed root asset path remains in index.html')
+          if 'src="/In/assets/' not in s:
+            raise SystemExit('Pages asset path missing from index.html')
+          PY
+          echo "Verified GitHub Pages base paths:"
+          grep -oE '(src|href)="[^"]+"' dist/index.html | head -20
       - name: Verify web
         working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
