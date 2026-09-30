@@ -23,7 +23,19 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 📦 Ekstrak ZIP (Jika diberikan parameter URL ZIP eksternal)
+      - name: 📁 Periksa & Pindahkan Subfolder (Jika hasil ekstrak bersarang)
+        run: |
+          if [ ! -f "package.json" ]; then
+            NESTED_DIR=$(find . -maxdepth 2 -name "package.json" -exec dirname {} \; | head -n 1)
+            if [ -n "$NESTED_DIR" ] && [ "$NESTED_DIR" != "." ]; then
+              echo "Memindahkan file dari $NESTED_DIR ke root..."
+              shopt -s dotglob
+              mv $NESTED_DIR/* .
+              rmdir $NESTED_DIR || true
+            fi
+          fi
+
+      - name: 📦 Ekstrak ZIP (Jika diberikan parameter URL)
         if: ${{ github.event.inputs.zip_url != '' }}
         run: |
           echo "Mengunduh file ZIP dari ${{ github.event.inputs.zip_url }}..."
@@ -35,11 +47,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: 📥 Install Dependencies
         run: |
-          npm ci || npm install --legacy-peer-deps
+          npm install --legacy-peer-deps
 
       - name: 🛠️ Lint Codebase
         run: |
@@ -74,6 +85,18 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
+      - name: 📁 Periksa & Pindahkan Subfolder (Jika hasil ekstrak bersarang)
+        run: |
+          if [ ! -f "package.json" ]; then
+            NESTED_DIR=$(find . -maxdepth 2 -name "package.json" -exec dirname {} \; | head -n 1)
+            if [ -n "$NESTED_DIR" ] && [ "$NESTED_DIR" != "." ]; then
+              echo "Memindahkan file dari $NESTED_DIR ke root..."
+              shopt -s dotglob
+              mv $NESTED_DIR/* .
+              rmdir $NESTED_DIR || true
+            fi
+          fi
+
       - name: ⚙️ Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -88,15 +111,15 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📥 Download Web Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: kopiin-web-build
-
-      - name: 📥 Install Node Dependencies & Capacitor
+      - name: 📝 Terima Lisensi Android SDK
         run: |
-          npm ci || npm install --legacy-peer-deps
-          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest --save
+          yes | sdkmanager --licenses || true
+
+      - name: 📥 Install Dependencies & Build Web Assets
+        run: |
+          npm install --legacy-peer-deps
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest --save --legacy-peer-deps
+          npm run build
 
       - name: 🔧 Inisialisasi Android Platform (Capacitor)
         run: |
@@ -109,7 +132,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
           cd ..
 
       - name: 📋 Siapkan & Rename APK Output
