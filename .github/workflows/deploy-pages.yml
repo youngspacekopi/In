@@ -58,26 +58,7 @@ jobs:
             echo "=== package.json ==="
             cat package.json
 
-            python3 - <<'PY'
-            from pathlib import Path
-            p = Path("src/context/PlatformContext.tsx")
-            s = p.read_text()
-            marker = "const KOPIIN_AUTH_BUILD_REVISION = '2026-09-30-master-fix-03';"
-            if marker not in s:
-              anchor = "const PlatformContext = createContext<PlatformContextType | undefined>(undefined);"
-              s = s.replace(anchor, marker + "\n\n" + anchor, 1)
-            needle = "      login(INITIAL_USERS.PLATFORM_MASTER);\n      return { success: true };"
-            replacement = "      login(INITIAL_USERS.PLATFORM_MASTER);\\n      recordAuditLog(INITIAL_USERS.PLATFORM_MASTER, 'MASTER_LOGIN_VERIFIED', 'platform:auth', {\\n        auth_revision: KOPIIN_AUTH_BUILD_REVISION,\\n        auth_system: 'KOPIIN_NATIVE_AUTH',\\n      });\\n      return { success: true };"
-            if needle in s:
-              s = s.replace(needle, replacement, 1)
-            p.write_text(s)
-
-            v = Path("vite.config.ts")
-            if v.exists():
-              s = v.read_text()
-              s = s.replace("start_url: '/',\n          scope: '/',", "start_url: '/In/',\n          scope: '/In/',", 1)
-              v.write_text(s)
-            PY
+            python3 -c "from pathlib import Path; p=Path('src/context/PlatformContext.tsx'); s=p.read_text(); marker='const KOPIIN_AUTH_BUILD_REVISION = \'2026-09-30-master-fix-04\';'; anchor='const PlatformContext = createContext<PlatformContextType | undefined>(undefined);'; s=s if marker in s else s.replace(anchor, marker + chr(10)+chr(10)+anchor, 1); needle='      login(INITIAL_USERS.PLATFORM_MASTER);'+chr(10)+'      return { success: true };'; repl='      login(INITIAL_USERS.PLATFORM_MASTER);'+chr(10)+'      recordAuditLog(INITIAL_USERS.PLATFORM_MASTER, \'MASTER_LOGIN_VERIFIED\', \'platform:auth\', { auth_revision: KOPIIN_AUTH_BUILD_REVISION, auth_system: \'KOPIIN_NATIVE_AUTH\' });'+chr(10)+'      return { success: true };'; s=s.replace(needle,repl,1); p.write_text(s); v=Path('vite.config.ts'); s=v.read_text(); v.write_text(s.replace(\"start_url: '/',\\n          scope: '/'\",\"start_url: '/In/',\\n          scope: '/In/'\",1)) if v.exists() else None"
 
             npm install --legacy-peer-deps
 
