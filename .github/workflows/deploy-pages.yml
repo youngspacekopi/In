@@ -23,50 +23,78 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Extract and prepare website
+
+      - name: Extract project
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf site work
+          rm -rf work site
           mkdir -p work site
           unzip -q "kopiin (5).zip" -d work
-          echo "ZIP contents:"
-          find work -maxdepth 4 -type f | sort | head -200
+          echo "=== ZIP STRUCTURE ==="
+          find work -type f | sort | head -500
 
-          INDEX="$(find work -type f -name index.html -print -quit || true)"
-          if [ -n "$INDEX" ]; then
-            ROOT="$(dirname "$INDEX")"
-            cp -a "$ROOT"/. site/
-          else
-            PKG="$(find work -type f -name package.json -print -quit || true)"
-            if [ -z "$PKG" ]; then
-              echo "::error::No index.html or package.json found."
-              exit 1
-            fi
+      - name: Build project for Pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="$(find work -type f -name package.json -not -path '*/node_modules/*' -print -quit || true)"
+          if [ -n "$PKG" ]; then
             ROOT="$(dirname "$PKG")"
+            echo "Using project root: $ROOT"
             cd "$ROOT"
-            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+            echo "=== package.json ==="
+            cat package.json
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+
             npm run build
+
             FOUND=0
             for DIR in dist build out; do
               if [ -d "$DIR" ]; then
+                echo "Using build output: $DIR"
                 cp -a "$DIR"/. "$GITHUB_WORKSPACE/site/"
                 FOUND=1
                 break
               fi
             done
-            if [ "$FOUND" -eq 0 ] || [ ! -f "$GITHUB_WORKSPACE/site/index.html" ]; then
-              echo "::error::Build produced no deployable index.html."
+
+            if [ "$FOUND" -eq 0 ]; then
+              echo "::error::npm build completed but no dist/, build/, or out/ directory was produced."
               exit 1
             fi
+          else
+            INDEX="$(find work -type f -name index.html -print -quit || true)"
+            if [ -z "$INDEX" ]; then
+              echo "::error::No package.json or index.html found in ZIP."
+              exit 1
+            fi
+            ROOT="$(dirname "$INDEX")"
+            echo "Static site root: $ROOT"
+            cp -a "$ROOT"/. "$GITHUB_WORKSPACE/site/"
           fi
 
-          touch site/.nojekyll
-          test -f site/index.html
-          echo "READY FOR GITHUB PAGES"
-          find site -maxdepth 2 -type f | sort | head -200
+          touch "$GITHUB_WORKSPACE/site/.nojekyll"
+
+          if [ ! -s "$GITHUB_WORKSPACE/site/index.html" ]; then
+            echo "::error::Final Pages artifact has no non-empty index.html."
+            exit 1
+          fi
+
+          echo "=== FINAL PAGES FILES ==="
+          find "$GITHUB_WORKSPACE/site" -type f | sort | head -500
+          echo "=== index.html size ==="
+          wc -c "$GITHUB_WORKSPACE/site/index.html"
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
