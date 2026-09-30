@@ -72,6 +72,39 @@ jobs:
           PY
           echo "Verified GitHub Pages base paths:"
           grep -oE '(src|href)="[^"]+"' dist/index.html | head -20
+      - name: Disable stale PWA cache
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dist/registerSW.js')
+          p.write_text("""if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+              try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) await reg.unregister();
+                if (window.caches) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map(k => caches.delete(k)));
+                }
+              } catch (e) {
+                console.warn('PWA cleanup:', e);
+              }
+            });
+          }
+          """)
+          Path('dist/sw.js').write_text("""self.addEventListener('install', () => self.skipWaiting());
+          self.addEventListener('activate', async event => {
+            event.waitUntil((async () => {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(k => caches.delete(k)));
+              await self.registration.unregister();
+              const clients = await self.clients.matchAll({type:'window'});
+              clients.forEach(c => c.navigate(c.url));
+            })());
+          });
+          """)
+          echo "Stale PWA/service-worker cleanup enabled."
       - name: Verify web
         working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
