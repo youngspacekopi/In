@@ -72,11 +72,9 @@ jobs:
           PY
           echo "Verified GitHub Pages base paths:"
           grep -oE '(src|href)="[^"]+"' dist/index.html | head -20
-      - name: Disable stale PWA cache
+      - name: Production web check
         working-directory: \${{ env.DIR }}
-        run: |
-          rm -f dist/sw.js dist/registerSW.js
-          echo "PWA service worker removed from production build."
+        run: test -s dist/index.html
       - name: Verify web
         working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
