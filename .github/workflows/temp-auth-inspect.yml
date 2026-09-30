@@ -1,0 +1,25 @@
+name: Temporary Auth Inspect
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "kopiin (6).zip"
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect auth source
+        run: |
+          set -e
+          rm -rf work
+          mkdir work
+          unzip -q "kopiin (6).zip" -d work
+          echo "=== PlatformContext.tsx ==="
+          cat work/src/context/PlatformContext.tsx
+          echo "=== kopiinAuth.ts ==="
+          cat work/src/lib/auth/kopiinAuth.ts
+          echo "=== rbac.ts ==="
+          cat work/src/lib/auth/rbac.ts
