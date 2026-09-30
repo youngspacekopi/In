@@ -51,6 +51,14 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project directory: $PROJECT_DIR"
 
+      - name: Audit quick-account master references
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== MASTER/QUICK ACCOUNT REFERENCES ==="
+          grep -RniE --exclude-dir=node_modules --exclude-dir=android --exclude-dir=dist 'akun cepat|quick account|quick.?login|platform.?master|INITIAL_USERS|MASTER' . | head -300 || true
+
       - name: Apply master authentication fix
         working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
