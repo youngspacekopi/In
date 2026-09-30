@@ -1,0 +1,73 @@
+name: Sanitize master demo
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sanitize-master-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove master demo entry
+        shell: python
+        run: |
+          import zipfile, re, shutil
+          from pathlib import Path
+          zpath=Path("kopiin (7).zip"); root=Path("work"); out=Path("out.zip")
+          if root.exists(): shutil.rmtree(root)
+          root.mkdir()
+          with zipfile.ZipFile(zpath) as z: z.extractall(root)
+
+          for p in root.rglob("LoginPage.tsx"):
+              s=p.read_text(encoding="utf-8",errors="ignore")
+              marker="role: 'PLATFORM_MASTER'"
+              while marker in s:
+                  pos=s.find(marker); start=s.rfind("{",0,pos)
+                  if start<0: break
+                  depth=0; quote=None; esc=False; end=None
+                  for i in range(start,len(s)):
+                      c=s[i]
+                      if quote:
+                          if esc: esc=False
+                          elif c=="\\": esc=True
+                          elif c==quote: quote=None
+                      elif c in "'\"": quote=c
+                      elif c=="{": depth+=1
+                      elif c=="}":
+                          depth-=1
+                          if depth==0: end=i+1; break
+                  if end is None: break
+                  j=end
+                  while j<len(s) and s[j] in " \t\r\n,": j+=1
+                  s=s[:start]+s[j:]
+              s=re.sub(r'^.*Master \\(mdqputra\\).*$\n?','',s,flags=re.M)
+              p.write_text(s,encoding="utf-8")
+
+          if out.exists(): out.unlink()
+          with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
+              for p in root.rglob("*"):
+                  if p.is_file(): z.write(p,p.relative_to(root))
+          shutil.move(out,zpath)
+
+          with zipfile.ZipFile(zpath) as z:
+              for n in z.namelist():
+                  if n.endswith("LoginPage.tsx"):
+                      s=z.read(n).decode("utf-8","ignore")
+                      assert "role: 'PLATFORM_MASTER'" not in s
+
+      - name: Commit and remove temporary workflows
+        shell: bash
+        run: |
+          set -e
+          rm -f .github/workflows/audit-master-demo.yml .github/workflows/remove-master-demo.yml .github/workflows/sanitize-master-demo.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "security: remove master demo access" || exit 0
+          git push
