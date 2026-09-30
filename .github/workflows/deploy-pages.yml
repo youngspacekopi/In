@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "kopiin (5).zip"
+      - "*.zip"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -38,7 +38,10 @@ jobs:
           set -euo pipefail
           rm -rf work site
           mkdir -p work site
-          unzip -q "kopiin (5).zip" -d work
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name "*.zip" -printf "%T@ %p\n" | sort -nr | head -n1 | cut -d" " -f2-)"
+          if [ -z "$ZIP_FILE" ]; then echo "::error::No project ZIP found."; exit 1; fi
+          echo "Using latest ZIP: $ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d work
           echo "=== ZIP STRUCTURE ==="
           find work -type f | sort | head -500
 
