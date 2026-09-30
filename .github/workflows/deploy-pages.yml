@@ -112,6 +112,17 @@ jobs:
 
           touch "$GITHUB_WORKSPACE/site/.nojekyll"
 
+          # Force clients away from stale PWA/service-worker caches.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("site/index.html")
+          s = p.read_text()
+          marker = '<meta name="kopiin-build" content="2026-09-30-master-login-fix-01">'
+          if 'name="kopiin-build"' not in s:
+              s = s.replace('<head>', '<head>\\n' + marker, 1)
+          p.write_text(s)
+          PY
+
           if [ ! -s "$GITHUB_WORKSPACE/site/index.html" ]; then
             echo "::error::Final Pages artifact has no non-empty index.html."
             exit 1
