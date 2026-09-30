@@ -91,6 +91,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ ! -f capacitor.config.json ]; then
+            cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.kopiin.platform",
+            "appName": "KOPIIN",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          JSON
+          fi
           if [ ! -d android ]; then
             npx cap add android
           fi
