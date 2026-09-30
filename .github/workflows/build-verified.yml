@@ -79,21 +79,30 @@ jobs:
               raise SystemExit(f'Master login verification failed: missing {required}')
           PY
           test -s dist/index.html
-      - name: Disable stale PWA service worker
+      - name: Disable stale PWA service worker and force fresh client bundle
         working-directory: ${{ env.DIR }}
         run: |
           set -e
           rm -f dist/sw.js dist/registerSW.js dist/workbox-*.js
           python3 - <<'PY'
           from pathlib import Path
+          import os, re
           p=Path('dist/index.html')
           s=p.read_text()
-          s=s.replace('<script type="module" src="/registerSW.js"></script>', '')
-          s=s.replace('<script src="/registerSW.js"></script>', '')
+          # Remove every PWA registration tag variant, including Vite's id/crossorigin form.
+          s=re.sub(r'<script[^>]+(?:registerSW\\.js|vite-plugin-pwa:register-sw)[^>]*></script>', '', s, flags=re.I)
+          # Bust browser caches for the generated JS/CSS on every GitHub commit.
+          v=os.environ.get('GITHUB_SHA','unknown')
+          s=re.sub(r'(src="/In/assets/[^"]+\\.js)"', r'\\1?v='+v, s)
+          s=re.sub(r'(href="/In/assets/[^"]+\\.css)"', r'\\1?v='+v, s)
           p.write_text(s)
+          Path('dist/404.html').write_text(s)
           PY
           test ! -e dist/sw.js
           test ! -e dist/registerSW.js
+          ! grep -q 'registerSW.js' dist/index.html
+          grep -q "mdqputra@gmail.com" dist/assets/*.js
+          grep -q "PLATFORM_MASTER" dist/assets/*.js
       - name: Normalize GitHub Pages paths
         working-directory: ${{ env.DIR }}
         run: |
