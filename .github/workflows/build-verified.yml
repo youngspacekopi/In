@@ -27,12 +27,6 @@ jobs:
           unzip -q "$z" -d project
           p=$(find project -type f -name package.json -not -path '*/node_modules/*' -print -quit)
           echo "DIR=$(dirname "$p")" >> "$GITHUB_ENV"
-      - name: Trace extracted login source
-        uses: actions/upload-artifact@v4
-        with:
-          name: kopiin-source-trace
-          path: project
-          retention-days: 1
       - name: Hide Master demo option
         working-directory: ${{ env.DIR }}
         run: |
