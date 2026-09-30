@@ -59,6 +59,14 @@ jobs:
           echo "=== MASTER/QUICK ACCOUNT REFERENCES ==="
           grep -RniE --exclude-dir=node_modules --exclude-dir=android --exclude-dir=dist 'akun cepat|quick account|quick.?login|platform.?master|INITIAL_USERS|MASTER' . | head -300 || true
 
+      - name: Inspect quick-account UI context
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== LoginPage quick-account context ==="
+          sed -n '300,355p' src/components/presentation/LoginPage.tsx
+
       - name: Apply master authentication fix
         working-directory: ${{ env.PROJECT_DIR }}
         shell: bash
