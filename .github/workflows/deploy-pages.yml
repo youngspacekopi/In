@@ -27,6 +27,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
       - name: Extract project
         shell: bash
         run: |
@@ -51,12 +56,12 @@ jobs:
             cat package.json
 
             if [ -f package-lock.json ]; then
-              npm ci
+              npm ci --legacy-peer-deps
             else
-              npm install
+              npm install --legacy-peer-deps
             fi
 
-            npm run build
+            npm run build -- --base=/In/
 
             FOUND=0
             for DIR in dist build out; do
