@@ -73,7 +73,7 @@ jobs:
           echo "Verified GitHub Pages base paths:"
           grep -oE '(src|href)="[^"]+"' dist/index.html | head -20
       - name: Production web check
-        working-directory: \${{ env.DIR }}
+        working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
       - name: Verify web
         working-directory: ${{ env.DIR }}
