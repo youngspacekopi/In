@@ -1,0 +1,30 @@
+name: Audit uploaded ZIP for Master demo
+
+on:
+  push:
+    paths:
+      - 'kopiin (7).zip'
+      - '.github/workflows/audit-master-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect ZIP
+        shell: bash
+        run: |
+          set -e
+          rm -rf work
+          mkdir work
+          unzip -q 'kopiin (7).zip' -d work
+          echo '=== PATHS CONTAINING MASTER ==='
+          find work -iname '*master*' -print | head -200 || true
+          echo '=== TEXT MATCHES FOR MASTER/DEMO ==='
+          grep -RIniE 'master|demo' work --exclude='*.png' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.gif' --exclude='*.webp' --exclude='*.ico' --exclude='*.zip' 2>/dev/null | head -400 || true
+          echo '=== CREDENTIAL-LIKE MATCHES ==='
+          grep -RIniE 'password|passwd|demo.?account|demo.?login|master.?login|email' work --exclude='*.png' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.gif' --exclude='*.webp' --exclude='*.ico' --exclude='*.zip' 2>/dev/null | head -400 || true
