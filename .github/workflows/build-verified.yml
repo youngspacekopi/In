@@ -128,6 +128,28 @@ jobs:
           PY
           echo "Verified GitHub Pages base paths:"
           grep -oE '(src|href)="[^"]+"' dist/index.html | head -20
+      - name: Final browser cache bust
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path('dist/index.html')
+          s=p.read_text()
+          v=os.environ['GITHUB_SHA']
+          for marker in ['src="/In/assets/','href="/In/assets/']:
+            parts=s.split(marker)
+            out=parts[0]
+            for part in parts[1:]:
+              end=part.find('"')
+              if end >= 0 and '?v=' not in part[:end]:
+                part=part[:end]+'?v='+v+part[end:]
+              out+=marker+part
+            s=out
+          p.write_text(s)
+          Path('dist/404.html').write_text(s)
+          PY
+          grep -q "?v=${GITHUB_SHA}" dist/index.html
       - name: Production web check
         working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
