@@ -23,3 +23,4 @@ jobs:
           cat work/src/lib/auth/kopiinAuth.ts
           echo "=== rbac.ts ==="
           cat work/src/lib/auth/rbac.ts
+# trigger
