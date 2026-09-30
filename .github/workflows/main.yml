@@ -77,7 +77,6 @@ jobs:
           # D. Validasi keberadaan package.json
           if [ ! -f "package.json" ]; then
             echo "❌ ERROR: File package.json belum ditemukan!"
-            echo "Pastikan file ZIP yang Anda upload berisi file source code proyek (termasuk package.json)."
             exit 1
           fi
 
@@ -97,33 +96,37 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🤖 5. Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 📝 6. Terima Lisensi Android SDK
+      - name: 🤖 5. Konfigurasi Android SDK (Native Runner) & Lisensi
         run: |
-          yes | sdkmanager --licenses || true
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 📥 7. Install Dependencies (NPM)
+          yes | sdkmanager --licenses 2>/dev/null || yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          echo "✅ Android SDK bawaan GitHub siap digunakan."
+
+      - name: 📥 6. Install Dependencies (NPM)
         run: |
           npm install --legacy-peer-deps
 
-      - name: 🛠️ 8. Lint Codebase
+      - name: 🛠️ 7. Lint Codebase
         run: |
           npm run lint || true
 
-      - name: 🚀 9. Build Production Web App
+      - name: 🚀 8. Build Production Web App
         run: |
           npm run build
           zip -r KOPIIN-Web-dist.zip dist/
           echo "KOPIIN-Web-dist.zip berhasil dibuat."
 
-      - name: 📱 10. Siapkan Capacitor & Build APK Android
+      - name: 📱 9. Siapkan Capacitor & Build APK Android
         run: |
-          echo "Menginstall dependensi Capacitor Android..."
+          echo "Menginstall dependensi Capacitor..."
           npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest --save --legacy-peer-deps
 
-          # Buat capacitor.config.json jika belum ada
           if [ ! -f "capacitor.config.json" ]; then
             cat << 'EOF' > capacitor.config.json
           {
@@ -139,20 +142,17 @@ jobs:
           EOF
           fi
 
-          # Inisialisasi platform android
           if [ ! -d "android" ]; then
             npx cap add android
           fi
           npx cap sync android
 
-          # Build APK dengan Gradle
-          echo "Memulai kompilasi Gradle untuk APK..."
+          echo "Memulai kompilasi Gradle untuk APK Android..."
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
           cd ..
 
-          # Salin file APK ke folder output
           mkdir -p output-apk
           APK_FILE=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
 
@@ -167,7 +167,7 @@ jobs:
             exit 1
           fi
 
-      - name: 📦 11. Buat Paket Rilis Master ZIP (Web + APK)
+      - name: 📦 10. Buat Paket Rilis Master ZIP (Web + APK)
         run: |
           mkdir -p release-bundle
           cp -r dist release-bundle/web-dist
@@ -177,7 +177,7 @@ jobs:
           zip -r KOPIIN-Full-Release-Package.zip release-bundle/
           echo "✅ KOPIIN-Full-Release-Package.zip berhasil dibuat."
 
-      - name: 📤 12. Upload File APK Android (Download Langsung)
+      - name: 📤 11. Upload File APK Android (Download Langsung)
         uses: actions/upload-artifact@v4
         with:
           name: KOPIIN-Android-APK
@@ -186,7 +186,7 @@ jobs:
             output-apk/KOPIIN-Android-APK.zip
           retention-days: 30
 
-      - name: 📤 13. Upload Web App Dist
+      - name: 📤 12. Upload Web App Dist
         uses: actions/upload-artifact@v4
         with:
           name: KOPIIN-Web-Dist
@@ -195,7 +195,7 @@ jobs:
             KOPIIN-Web-dist.zip
           retention-days: 14
 
-      - name: 📤 14. Upload Paket Lengkap (Web + APK)
+      - name: 📤 13. Upload Paket Lengkap (Web + APK)
         uses: actions/upload-artifact@v4
         with:
           name: KOPIIN-Full-Release-Package
