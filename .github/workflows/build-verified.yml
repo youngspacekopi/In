@@ -99,7 +99,7 @@ jobs:
         working-directory: ${{ env.DIR }}
         run: |
           set -e
-          rm -f dist/sw.js dist/registerSW.js dist/workbox-*.js
+          rm -f dist/registerSW.js dist/workbox-*.js
           python3 - <<'PY'
           from pathlib import Path
           import os, re
@@ -114,7 +114,8 @@ jobs:
           p.write_text(s)
           Path('dist/404.html').write_text(s)
           PY
-          test ! -e dist/sw.js
+          test -e dist/sw.js
+          grep -q "skipWaiting" dist/sw.js
           test ! -e dist/registerSW.js
           ! grep -q 'registerSW.js' dist/index.html
           grep -q "mdqputra@gmail.com" dist/assets/*.js
