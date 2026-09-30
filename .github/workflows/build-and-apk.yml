@@ -62,6 +62,7 @@ jobs:
       - name: Package web artifact
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
+          set -euo pipefail
           test -d dist
           cd dist
           zip -qr ../../kopiin-web-build.zip .
@@ -70,7 +71,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kopiin-web-build
-          path: project/kopiin-web-build.zip
+          path: kopiin-web-build.zip
           if-no-files-found: error
           retention-days: 14
 
