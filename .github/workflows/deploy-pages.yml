@@ -67,12 +67,7 @@ jobs:
               anchor = "const PlatformContext = createContext<PlatformContextType | undefined>(undefined);"
               s = s.replace(anchor, marker + "\n\n" + anchor, 1)
             needle = "      login(INITIAL_USERS.PLATFORM_MASTER);\n      return { success: true };"
-            replacement = """      login(INITIAL_USERS.PLATFORM_MASTER);
-      recordAuditLog(INITIAL_USERS.PLATFORM_MASTER, 'MASTER_LOGIN_VERIFIED', 'platform:auth', {
-        auth_revision: KOPIIN_AUTH_BUILD_REVISION,
-        auth_system: 'KOPIIN_NATIVE_AUTH',
-      });
-      return { success: true };"""
+            replacement = "      login(INITIAL_USERS.PLATFORM_MASTER);\\n      recordAuditLog(INITIAL_USERS.PLATFORM_MASTER, 'MASTER_LOGIN_VERIFIED', 'platform:auth', {\\n        auth_revision: KOPIIN_AUTH_BUILD_REVISION,\\n        auth_system: 'KOPIIN_NATIVE_AUTH',\\n      });\\n      return { success: true };"
             if needle in s:
               s = s.replace(needle, replacement, 1)
             p.write_text(s)
