@@ -58,11 +58,7 @@ jobs:
             echo "=== package.json ==="
             cat package.json
 
-            if [ -f package-lock.json ]; then
-              npm ci --legacy-peer-deps
-            else
-              npm install --legacy-peer-deps
-            fi
+            npm install --legacy-peer-deps
 
             npm run build -- --base=/In/
 
