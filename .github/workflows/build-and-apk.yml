@@ -51,6 +51,37 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project directory: $PROJECT_DIR"
 
+      - name: Apply master authentication fix
+        working-directory: ${{ env.PROJECT_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("src/context/PlatformContext.tsx")
+          s = p.read_text()
+          marker = "const KOPIIN_AUTH_BUILD_REVISION = '2026-09-30-master-fix-03';"
+          if marker not in s:
+            anchor = "const PlatformContext = createContext<PlatformContextType | undefined>(undefined);"
+            s = s.replace(anchor, marker + "\n\n" + anchor, 1)
+          needle = "      login(INITIAL_USERS.PLATFORM_MASTER);\n      return { success: true };"
+          replacement = """      login(INITIAL_USERS.PLATFORM_MASTER);
+      recordAuditLog(INITIAL_USERS.PLATFORM_MASTER, 'MASTER_LOGIN_VERIFIED', 'platform:auth', {
+        auth_revision: KOPIIN_AUTH_BUILD_REVISION,
+        auth_system: 'KOPIIN_NATIVE_AUTH',
+      });
+      return { success: true };"""
+          if needle in s:
+            s = s.replace(needle, replacement, 1)
+          p.write_text(s)
+
+          v = Path("vite.config.ts")
+          if v.exists():
+            s = v.read_text()
+            s = s.replace("start_url: '/',\n          scope: '/',", "start_url: '/In/',\n          scope: '/In/',", 1)
+            v.write_text(s)
+          PY
+
       - name: Install dependencies
         working-directory: ${{ env.PROJECT_DIR }}
         run: npm install --legacy-peer-deps --no-audit --no-fund
