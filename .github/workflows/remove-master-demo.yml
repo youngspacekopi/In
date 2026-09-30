@@ -1,0 +1,117 @@
+name: Remove Master demo access from uploaded ZIP
+
+on:
+  workflow_run:
+    workflows: ["Audit uploaded ZIP for Master demo"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sanitize ZIP
+        shell: python
+        run: |
+          import zipfile, re, shutil
+          from pathlib import Path
+          ZIP = Path("kopiin (7).zip")
+          ROOT = Path("work")
+          OUT = Path("sanitized.zip")
+          if ROOT.exists(): shutil.rmtree(ROOT)
+          ROOT.mkdir()
+          with zipfile.ZipFile(ZIP) as z: z.extractall(ROOT)
+
+          changed = []
+          removed_demo_files = []
+
+          for p in list(ROOT.rglob("*")):
+              if p.is_file() and re.search(r"(master[-_ ]?demo|demo[-_ ]?master)", str(p.relative_to(ROOT)), re.I):
+                  p.unlink()
+                  removed_demo_files.append(str(p.relative_to(ROOT)))
+
+          for p in ROOT.rglob("LoginPage.tsx"):
+              s = p.read_text(encoding="utf-8", errors="ignore")
+              old = s
+              marker = "role: 'PLATFORM_MASTER'"
+              while marker in s:
+                  pos = s.find(marker)
+                  start = s.rfind("{", 0, pos)
+                  if start < 0: break
+                  depth = 0
+                  in_str = None
+                  esc = False
+                  end = None
+                  for i in range(start, len(s)):
+                      c = s[i]
+                      if in_str:
+                          if esc: esc = False
+                          elif c == "\\": esc = True
+                          elif c == in_str: in_str = None
+                          continue
+                      if c in "'\"": in_str = c
+                      elif c == "{": depth += 1
+                      elif c == "}":
+                          depth -= 1
+                          if depth == 0:
+                              end = i + 1
+                              break
+                  if end is None: break
+                  j = end
+                  while j < len(s) and s[j] in " \t\r\n,": j += 1
+                  s = s[:start] + s[j:]
+              s = re.sub(r'^.*Master \\(mdqputra\\).*$\n?', '', s, flags=re.M)
+              s = s.replace("mdqputra@gmail.com", "")
+              s = s.replace("990830", "")
+              if s != old:
+                  p.write_text(s, encoding="utf-8")
+                  changed.append(str(p.relative_to(ROOT)))
+
+          for p in ROOT.rglob("*"):
+              if not p.is_file(): continue
+              if p.suffix.lower() not in {".ts",".tsx",".js",".jsx",".json",".md",".html",".css",".txt",".env",".yml",".yaml"}: continue
+              try: s = p.read_text(encoding="utf-8")
+              except Exception: continue
+              old = s
+              s = s.replace("mdqputra@gmail.com", "")
+              s = s.replace("990830", "")
+              if s != old:
+                  p.write_text(s, encoding="utf-8")
+                  if str(p.relative_to(ROOT)) not in changed: changed.append(str(p.relative_to(ROOT)))
+
+          if OUT.exists(): OUT.unlink()
+          with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
+              for p in ROOT.rglob("*"):
+                  if p.is_file(): z.write(p, p.relative_to(ROOT))
+          shutil.move(OUT, ZIP)
+
+          with zipfile.ZipFile(ZIP) as z:
+              names = z.namelist()
+              assert not any(re.search(r"(master[-_ ]?demo|demo[-_ ]?master)", n, re.I) for n in names)
+              for n in names:
+                  if Path(n).suffix.lower() not in {".ts",".tsx",".js",".jsx",".json",".md",".html",".css",".txt",".env",".yml",".yaml"}: continue
+                  data = z.read(n).decode("utf-8", "ignore")
+                  assert "mdqputra@gmail.com" not in data
+                  assert "990830" not in data
+              for n in names:
+                  if n.endswith("LoginPage.tsx"):
+                      data = z.read(n).decode("utf-8", "ignore")
+                      assert "role: 'PLATFORM_MASTER'" not in data
+          print("Sanitized successfully.")
+          print("Changed:", changed)
+          print("Removed demo files:", removed_demo_files)
+
+      - name: Commit sanitized ZIP and remove audit workflow
+        shell: bash
+        run: |
+          set -e
+          rm -f .github/workflows/audit-master-demo.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "security: remove master demo access from uploaded package" || exit 0
+          git push
