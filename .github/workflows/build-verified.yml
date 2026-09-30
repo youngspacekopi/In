@@ -1,0 +1,76 @@
+name: KOPIIN Final Build Verified
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Extract ZIP
+        run: |
+          set -e
+          z=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
+          mkdir project
+          unzip -q "$z" -d project
+          p=$(find project -type f -name package.json -not -path '*/node_modules/*' -print -quit)
+          echo "DIR=$(dirname "$p")" >> "$GITHUB_ENV"
+      - name: Hide Master demo option
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/components/presentation/LoginPage.tsx')
+          s=p.read_text()
+          n='bg-purple-100 hover:bg-purple-200 text-purple-950 border border-purple-300 rounded-lg text-[10px] font-bold cursor-pointer'
+          if s.count(n)!=1: raise SystemExit('Master demo button pattern missing')
+          p.write_text(s.replace(n,'hidden '+n,1))
+          PY
+      - name: Install dependencies
+        working-directory: ${{ env.DIR }}
+        run: |
+          node -e "const fs=require('fs'),p='package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.overrides=Object.assign({},j.overrides,{'electron-to-chromium':'1.5.439'});fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
+          rm -f package-lock.json npm-shrinkwrap.json
+          npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Build web
+        working-directory: ${{ env.DIR }}
+        run: npm run build
+      - name: Verify web
+        working-directory: ${{ env.DIR }}
+        run: test -s dist/index.html
+      - name: Install Capacitor
+        working-directory: ${{ env.DIR }}
+        run: npm install --save-exact @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 --legacy-peer-deps --no-audit --no-fund
+      - name: Build Android
+        working-directory: ${{ env.DIR }}
+        run: |
+          set -e
+          if [ ! -f capacitor.config.json ]; then
+            printf '%s\n' '{"appId":"com.kopiin.platform","appName":"KOPIIN","webDir":"dist","server":{"androidScheme":"https"}}' > capacitor.config.json
+          fi
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+          cd android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Upload web
+        uses: actions/upload-artifact@v4
+        with:
+          name: kopiin-web-verified
+          path: ${{ env.DIR }}/dist
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kopiin-apk-verified
+          path: ${{ env.DIR }}/android/app/build/outputs/apk/debug/*.apk
