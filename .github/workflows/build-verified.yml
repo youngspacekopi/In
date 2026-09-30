@@ -61,6 +61,22 @@ jobs:
       - name: Build web for GitHub Pages
         working-directory: ${{ env.DIR }}
         run: npm run build -- --base=/In/
+      - name: Replace stale service worker with network-only recovery worker
+        working-directory: ${{ env.DIR }}
+        run: |
+          cat > dist/sw.js <<'SW'
+          self.addEventListener('install',()=>self.skipWaiting());
+          self.addEventListener('activate',event=>event.waitUntil((async()=>{
+            await self.clients.claim();
+            await self.registration.unregister();
+            const clients=await self.clients.matchAll({type:'window'});
+            for(const c of clients){try{await c.navigate(c.url)}catch{}}
+          })()));
+          self.addEventListener('fetch',event=>{
+            if(event.request.method!=='GET') return;
+            event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>caches.match(event.request)));
+          });
+          SW
       - name: Clear stale client state and verify master identity
         working-directory: ${{ env.DIR }}
         run: |
