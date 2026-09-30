@@ -1,6 +1,0 @@
-{
-  "name": "KOPIIN",
-  "description": "Platform SaaS Manajemen Café Multi-Tenant – Fondasi Teknis, Arsitektur, & 4 Presentation Profiles",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
