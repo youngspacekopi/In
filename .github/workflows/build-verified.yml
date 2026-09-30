@@ -47,6 +47,24 @@ jobs:
       - name: Build web for GitHub Pages
         working-directory: ${{ env.DIR }}
         run: npm run build -- --base=/In/
+      - name: Clear stale client state and verify master identity
+        working-directory: ${{ env.DIR }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dist/index.html')
+          s=p.read_text()
+          cleanup='''<script>(async()=>{try{if('serviceWorker' in navigator){for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister()}if('caches' in window){for(const k of await caches.keys())await caches.delete(k)}}catch(e){}})()</script>'''
+          if cleanup not in s:
+            s=s.replace('<head>', '<head>'+cleanup, 1)
+          p.write_text(s)
+          js='\n'.join(x.read_text(errors='ignore') for x in Path('dist/assets').glob('*.js'))
+          for required in ['mdqputra@gmail.com','PLATFORM_MASTER']:
+            if required not in js:
+              raise SystemExit(f'Master login verification failed: missing {required}')
+          PY
+          test -s dist/index.html
       - name: Disable stale PWA service worker
         working-directory: ${{ env.DIR }}
         run: |
