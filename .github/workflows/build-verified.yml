@@ -167,6 +167,22 @@ jobs:
           Path('dist/404.html').write_text(s)
           PY
           grep -q "?v=${GITHUB_SHA}" dist/index.html
+      - name: Force versioned entry URL to bypass stale GitHub Pages HTML
+        working-directory: ${{ env.DIR }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path('dist/index.html')
+          s=p.read_text()
+          v=os.environ['GITHUB_SHA']
+          boot=f'''<script>(function(){{try{{var v={v!r};if(!location.search.includes('v='+v)){{location.replace(location.pathname+'?v='+v)}}}}catch(e){{}}}})()</script>'''
+          if boot not in s:
+            s=s.replace('<head>', '<head>'+boot, 1)
+          p.write_text(s)
+          Path('dist/404.html').write_text(s)
+          PY
+          grep -q "v=$GITHUB_SHA" dist/index.html
       - name: Production web check
         working-directory: ${{ env.DIR }}
         run: test -s dist/index.html
