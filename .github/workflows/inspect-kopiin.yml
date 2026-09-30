@@ -26,3 +26,9 @@ jobs:
           cat work/src/lib/supabase/client.ts
           echo "=== SUPABASE ENV ==="
           cat work/.env.example
+          tar -czf kopiin-source.tgz -C work .
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kopiin-source
+          path: kopiin-source.tgz
